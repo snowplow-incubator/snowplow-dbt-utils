@@ -1,0 +1,33 @@
+services:
+  spark:
+    build: .
+    container_name: spark-master
+    ports:
+      - "4040:4040"  # Spark UI
+      - "8080:8080"  # Spark Master WebUI
+      - "7077:7077"  # Spark Master port
+      - "10000:10000"  # Thrift Server
+    volumes:
+      - ./conf:/opt/spark/conf
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=eu-west-1
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_MASTER=spark://spark-master:7077
+      - HADOOP_OPTIONAL_TOOLS=hadoop-aws
+      - SPARK_CONF_DIR=/opt/spark/conf
+      - SPARK_CONF_spark_hadoop_fs_s3a_impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+      - SPARK_CONF_spark_hadoop_fs_s3a_fast_upload=true
+    networks:
+      - spark-network
+    command: >
+      /bin/bash -c "
+        /opt/spark/sbin/start-master.sh &&
+        /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 &&
+        tail -f /opt/spark/logs/*"
+
+networks:
+  spark-network:
+    driver: bridge
